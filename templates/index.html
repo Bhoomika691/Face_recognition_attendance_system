@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Attendance</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-layout">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────────────────────── -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">👁️</div>
+            <div>
+                <div class="brand-title">FaceAttend</div>
+                <div class="brand-sub">DeepFace ML Engine</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <button class="nav-btn active" onclick="switchTab('live')">
+                <span>📹</span> Live Feed
+            </button>
+            <button class="nav-btn" onclick="switchTab('attendance')">
+                <span>📋</span> Attendance Log
+            </button>
+            <button class="nav-btn" onclick="switchTab('register')">
+                <span>🔐</span> Register Face
+            </button>
+            <button class="nav-btn" onclick="switchTab('reports')">
+                <span>📊</span> Reports
+            </button>
+        </nav>
+
+        <div class="sidebar-section">
+            <div class="section-title">Registered People</div>
+            <ul id="people-list" class="people-list">
+                <li class="muted">Loading...</li>
+            </ul>
+        </div>
+
+        <!-- Admin status shown in sidebar -->
+        <div id="admin-sidebar-status" class="admin-status-bar hidden">
+            <span>🔑 Admin Active</span>
+            <button onclick="adminLogout()" class="btn-logout">Logout</button>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="status-dot"></div>
+            <span>DeepFace Active</span>
+        </div>
+    </aside>
+
+    <!-- ── MAIN ─────────────────────────────────────────────────────────── -->
+    <main class="main-content">
+
+        <!-- ── TAB: LIVE FEED ─────────────────────────────────────────── -->
+        <div id="tab-live" class="tab-panel active">
+            <div class="panel-header">
+                <h2>📹 Live Attendance Feed</h2>
+                <p>Stand in front of the camera. Attendance is marked automatically.</p>
+            </div>
+            <div class="live-layout">
+                <div class="camera-card">
+                    <div class="camera-header">
+                        <span class="live-badge">● LIVE</span>
+                        <span>Webcam — DeepFace Recognition</span>
+                    </div>
+                    <img id="camera-feed" src="/video_feed" alt="Camera Feed">
+                    <div class="camera-footer">
+                        🟢 Signed In &nbsp;|&nbsp; 🟠 Duplicate Blocked &nbsp;|&nbsp; 🔵 Signed Out &nbsp;|&nbsp; 🔴 Unknown
+                    </div>
+                </div>
+                <div class="activity-card">
+                    <div class="activity-header">⚡ Recent Activity</div>
+                    <ul id="activity-list" class="activity-list">
+                        <li class="muted" style="padding:20px;text-align:center">Waiting for detections...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TAB: ATTENDANCE LOG ─────────────────────────────────────── -->
+        <div id="tab-attendance" class="tab-panel">
+            <div class="panel-header">
+                <h2>📋 Today's Attendance Log</h2>
+                <p>Showing Sign-In and Sign-Out records only. Duplicate punches are hidden.</p>
+            </div>
+
+            <div class="log-controls">
+                <button class="btn-primary" onclick="loadAttendance()">🔄 Refresh</button>
+                <label class="toggle-label">
+                    <input type="checkbox" id="show-duplicates" onchange="loadAttendance()">
+                    Show duplicate records
+                </label>
+                <span id="log-count" class="muted"></span>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="att-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Date</th>
+                            <th>In-Time</th>
+                            <th>Out-Time</th>
+                            <th>Status</th>
+                            <th>Total Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody id="att-tbody">
+                        <tr><td colspan="4" class="empty-msg">Click Refresh to load.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── TAB: REGISTER FACE (Admin Protected) ───────────────────── -->
+        <div id="tab-register" class="tab-panel">
+
+            <!-- ADMIN LOGIN FORM (shown when not logged in) -->
+            <div id="login-wall">
+                <div class="login-card">
+                    <div class="login-icon">🔐</div>
+                    <h2>Admin Login Required</h2>
+                    <p>Only administrators can register new faces.</p>
+
+                    <div class="form-group" style="margin-top:24px">
+                        <label>Username</label>
+                        <input type="text" id="login-username" placeholder="Enter username"
+                               onkeydown="if(event.key==='Enter') adminLogin()">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" placeholder="Enter password"
+                               onkeydown="if(event.key==='Enter') adminLogin()">
+                    </div>
+                    <button class="btn-capture" onclick="adminLogin()">🔑 Login as Admin</button>
+                    <div id="login-result" class="reg-result hidden"></div>
+                </div>
+            </div>
+
+            <!-- REGISTER FACE FORM (shown when logged in as admin) -->
+            <div id="register-panel" class="hidden">
+                <div class="panel-header">
+                    <h2>➕ Register New Face</h2>
+                    <p>Type the person's name, look at the camera, then click Capture.</p>
+                </div>
+                <div class="register-layout">
+                    <div class="camera-card">
+                        <div class="camera-header">
+                            <span class="live-badge">● LIVE</span>
+                            <span>Position face clearly in frame</span>
+                        </div>
+                        <img src="/video_feed" alt="Camera">
+                    </div>
+                    <div class="form-card">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="reg-name"
+                                   placeholder="e.g. John Doe"
+                                   onkeydown="if(event.key==='Enter') registerFace()">
+                        </div>
+                        <button class="btn-capture" onclick="registerFace()">
+                            📸 Capture & Register
+                        </button>
+                        <div id="reg-result" class="reg-result hidden"></div>
+                        <div class="tips-box">
+                            <div class="tips-title">📋 Tips for best results</div>
+                            <ul>
+                                <li>Look directly at the camera</li>
+                                <li>Good lighting, no harsh shadows</li>
+                                <li>Face clearly visible, no obstructions</li>
+                                <li>Only one person in frame</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── TAB: REPORTS ───────────────────────────────────────────── -->
+        <div id="tab-reports" class="tab-panel">
+            <div class="panel-header">
+                <h2>📊 Attendance Reports</h2>
+                <p>View and download historical attendance data by date range.</p>
+            </div>
+
+            <!-- Filters -->
+            <div class="report-filters">
+                <div class="filter-group">
+                    <label>From Date</label>
+                    <input type="date" id="report-start">
+                </div>
+                <div class="filter-group">
+                    <label>To Date</label>
+                    <input type="date" id="report-end">
+                </div>
+                <div class="filter-group" style="align-self:flex-end">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="report-hide-dup" checked>
+                        Hide duplicate records
+                    </label>
+                </div>
+                <div class="filter-group" style="align-self:flex-end">
+                    <button class="btn-primary" onclick="loadReport()">🔍 View Report</button>
+                    <button class="btn-primary" onclick="loadMonthlyPercentage()">
+                        📊 Monthly %
+                    </button>
+                </div>
+            </div>
+
+            <!-- Download Section -->
+            <div class="download-bar">
+                <span class="download-label">⬇️ Download Report:</span>
+                <button class="btn-download excel" onclick="downloadReport('excel')">
+                    📊 Download Excel (.xlsx)
+                </button>
+                <button class="btn-download pdf" onclick="downloadReport('pdf')">
+                    📄 Download PDF
+                </button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div id="summary-cards" class="summary-cards hidden">
+                <div class="sum-card green">
+                    <div class="sum-num" id="sum-in">0</div>
+                    <div class="sum-label">Sign-Ins</div>
+                </div>
+                <div class="sum-card blue">
+                    <div class="sum-num" id="sum-out">0</div>
+                    <div class="sum-label">Sign-Outs</div>
+                </div>
+                <div class="sum-card orange">
+                    <div class="sum-num" id="sum-dup">0</div>
+                    <div class="sum-label">Duplicates Blocked</div>
+                </div>
+                <div class="sum-card purple">
+                    <div class="sum-num" id="sum-total">0</div>
+                    <div class="sum-label">Total Records</div>
+                </div>
+            </div>
+
+            <!-- Report Table -->
+            <div class="table-wrapper">
+                <table class="att-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Date</th>
+                            <th>In-Time</th>
+                            <th>Out-Time</th>
+                            <th>Status</th>
+                            <th>Total Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-tbody">
+                        <tr><td colspan="4" class="empty-msg">Select a date range and click View Report.</td></tr>
+                    </tbody>
+                </table>
+
+                <hr style="margin:30px 0;border-color:#2d3148;">
+                <h3 style="margin-bottom:15px;">📊 Monthly Attendance Percentage</h3>
+
+                <div class="table-wrapper">
+                    <table class="att-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Present Days</th>
+                                <th>Working Days</th>
+                                <th>Attendance %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-tbody">
+                            <tr>
+                                <td colspan="4" class="empty-msg">
+                                    Select a month and click Monthly %
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>
